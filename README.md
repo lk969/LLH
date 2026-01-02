@@ -144,11 +144,10 @@
 
     <script>
         // ===================== 和风天气配置项（替换为你的密钥） =====================
-        const API_KEY = "001d2426ced54715911c1c693e370e87"; // 你的密钥（保留不变）
-        // 核心：添加可商用的CORS代理前缀（解决403跨域）
-        const CORS_PROXY = "https://cors.kuaizhan.com/"; 
-        const CURRENT_WEATHER_API = CORS_PROXY + "https://devapi.qweather.com/v7/weather/now"; // 实时天气接口
-        const FORECAST_API = CORS_PROXY + "https://devapi.qweather.com/v7/weather/7d"; // 7天预报接口
+        const API_KEY = "001d2426ced54715911c1c693e370e87"; // 替换成你自己的和风天气开发版KEY
+        // 核心修改：接口地址改为本地代理地址
+        const CURRENT_WEATHER_API = "http://localhost:3000/now"; // 代理后的实时天气接口
+        const FORECAST_API = "http://localhost:3000/7d"; // 代理后的7天预报接口
 
         // ===================== 元素获取 =====================
         const cityInput = document.getElementById('cityInput');
