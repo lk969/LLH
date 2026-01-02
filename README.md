@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>简易天气查询 | 当天+未来一周</title>
-    <!-- 引入Tailwind CSS简化样式 -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入Font Awesome图标 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- 自定义Tailwind配置 -->
     <script>
         tailwind.config = {
             theme: {
@@ -16,12 +13,6 @@
                     colors: {
                         primary: '#3b82f6',
                         secondary: '#64748b',
-                        weather: {
-                            sunny: '#f97316',
-                            cloudy: '#94a3b8',
-                            rainy: '#60a5fa',
-                            snowy: '#bfdbfe'
-                        }
                     },
                     fontFamily: {
                         sans: ['Inter', 'system-ui', 'sans-serif'],
@@ -42,7 +33,6 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <!-- 顶部导航 -->
     <header class="bg-primary text-white py-4 shadow-md">
         <div class="container mx-auto px-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold flex items-center gap-2">
@@ -53,15 +43,13 @@
         </div>
     </header>
 
-    <!-- 主内容区 -->
     <main class="container mx-auto px-4 py-8">
-        <!-- 搜索框 -->
         <div class="max-w-2xl mx-auto mb-8">
             <div class="flex gap-2">
                 <input 
                     type="text" 
                     id="cityInput" 
-                    placeholder="请输入城市名称（如：北京、上海、杭州市西湖区）"
+                    placeholder="请输入城市名称（如：北京、上海、杭州）"
                     class="flex-1 px-4 py-3 rounded-lg border border-gray-200 card-shadow focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all-300"
                 >
                 <button 
@@ -74,9 +62,7 @@
             <p id="errorMsg" class="text-red-500 text-sm mt-2 hidden"></p>
         </div>
 
-        <!-- 天气展示区域（默认隐藏） -->
         <div id="weatherContainer" class="max-w-4xl mx-auto hidden">
-            <!-- 今日天气卡片 -->
             <div class="bg-white rounded-xl p-6 card-shadow mb-8">
                 <div class="flex flex-col md:flex-row justify-between items-center gap-6">
                     <div>
@@ -111,43 +97,38 @@
                 </div>
             </div>
 
-            <!-- 未来7天预报 -->
             <div class="bg-white rounded-xl p-6 card-shadow">
                 <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                     <i class="fas fa-calendar-week text-primary"></i>
                     未来7天天气预报
                 </h3>
                 <div id="forecastList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                    <!-- 未来天数卡片会通过JS动态生成 -->
                 </div>
             </div>
         </div>
 
-        <!-- 初始提示 -->
         <div id="initialHint" class="max-w-2xl mx-auto text-center py-12">
             <div class="inline-block bg-white p-8 rounded-xl card-shadow">
                 <i class="fas fa-cloud-sun-rain text-5xl text-primary mb-4"></i>
                 <h3 class="text-xl font-semibold text-gray-800 mb-2">输入城市名称查询天气</h3>
-                <p class="text-secondary">支持全国各城市/区县，实时查询当天及未来7天天气</p>
+                <p class="text-secondary">支持全国各城市，实时查询当天及未来7天天气</p>
             </div>
         </div>
     </main>
 
-    <!-- 页脚 -->
     <footer class="bg-gray-800 text-white py-6 mt-auto">
         <div class="container mx-auto px-4 text-center">
             <p class="opacity-70 text-sm">
-                数据来源：和风天气 API | 本网站仅作学习使用
+                数据来源：高德地图API | 本网站仅作学习使用
             </p>
         </div>
     </footer>
 
     <script>
-        // ===================== 和风天气配置项（替换为你的密钥） =====================
-        const API_KEY = "001d2426ced54715911c1c693e370e87"; // 替换成你自己的和风天气开发版KEY
-        // 核心修改：接口地址改为本地代理地址
-        const CURRENT_WEATHER_API = "http://localhost:3000/now"; // 代理后的实时天气接口
-        const FORECAST_API = "http://localhost:3000/7d"; // 代理后的7天预报接口
+        // ===================== 高德API配置（替换为你的密钥） =====================
+        const AMAP_KEY = "84b0ed4ededbaac14e90d1f1feac6ae8"; // 替换为申请的高德Key
+        const AMAP_GEO_API = "https://restapi.amap.com/v3/geocode/geo"; // 地理编码（城市转经纬度）
+        const AMAP_WEATHER_API = "https://restapi.amap.com/v3/weather/weatherInfo"; // 天气API
 
         // ===================== 元素获取 =====================
         const cityInput = document.getElementById('cityInput');
@@ -167,36 +148,81 @@
         const forecastList = document.getElementById('forecastList');
 
         // ===================== 工具函数 =====================
-        /**
-         * 显示错误信息
-         * @param {string} msg - 错误信息
-         */
-        function showError(msg) {
-            errorMsg.textContent = msg;
-            errorMsg.classList.remove('hidden');
-            setTimeout(() => {
-                errorMsg.classList.add('hidden');
-            }, 3000);
-        }
-
-        /**
-         * 格式化今日日期（YYYY-MM-DD 周X）
-         */
-        function formatTodayDate() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
+        // 格式化日期（YYYY-MM-DD 周X）
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
             const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-            const weekDay = weekDays[today.getDay()];
+            const weekDay = weekDays[date.getDay()];
             return `${year}-${month}-${day} ${weekDay}`;
         }
 
+        // 简化日期（MM-DD 周X）
+        function formatShortDate(dateStr) {
+            const date = new Date(dateStr);
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const weekDay = weekDays[date.getDay()];
+            return `${month}-${day}<br>${weekDay}`;
+        }
+
+        // 显示错误信息
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.remove('hidden');
+            setTimeout(() => errorMsg.classList.add('hidden'), 3000);
+        }
+
+        // 天气图标映射（高德天气类型→图标）
+        const weatherIconMap = {
+            '晴': 'https://webapi.amap.com/images/weather/icon/weather/day/01.png',
+            '多云': 'https://webapi.amap.com/images/weather/icon/weather/day/02.png',
+            '阴': 'https://webapi.amap.com/images/weather/icon/weather/day/03.png',
+            '小雨': 'https://webapi.amap.com/images/weather/icon/weather/day/07.png',
+            '中雨': 'https://webapi.amap.com/images/weather/icon/weather/day/08.png',
+            '大雨': 'https://webapi.amap.com/images/weather/icon/weather/day/09.png',
+            '暴雨': 'https://webapi.amap.com/images/weather/icon/weather/day/10.png',
+            '雷阵雨': 'https://webapi.amap.com/images/weather/icon/weather/day/13.png',
+            '小雪': 'https://webapi.amap.com/images/weather/icon/weather/day/15.png',
+            '中雪': 'https://webapi.amap.com/images/weather/icon/weather/day/16.png',
+            '大雪': 'https://webapi.amap.com/images/weather/icon/weather/day/17.png',
+            '雾': 'https://webapi.amap.com/images/weather/icon/weather/day/20.png',
+            '霾': 'https://webapi.amap.com/images/weather/icon/weather/day/21.png'
+        };
+
         // ===================== 核心逻辑 =====================
-        /**
-         * 获取并展示天气数据（适配和风天气API）
-         * @param {string} city - 城市名称（中文）
-         */
+        // 1. 城市名称转经纬度（高德天气API需要adcode）
+        async function getCityAdcode(city) {
+            const res = await fetch(`${AMAP_GEO_API}?address=${encodeURIComponent(city)}&key=${AMAP_KEY}`);
+            const data = await res.json();
+            if (data.status !== '1' || !data.geocodes.length) {
+                throw new Error(`未找到「${city}」的地理信息，请检查城市名称`);
+            }
+            // 获取城市的adcode（行政区划代码）
+            return {
+                adcode: data.geocodes[0].adcode,
+                cityName: data.geocodes[0].city || data.geocodes[0].province // 兼容直辖市
+            };
+        }
+
+        // 2. 根据adcode获取天气数据
+        async function getWeatherByAdcode(adcode) {
+            // 获取实时+7天预报
+            const res = await fetch(`${AMAP_WEATHER_API}?city=${adcode}&extensions=all&key=${AMAP_KEY}`);
+            const data = await res.json();
+            if (data.status !== '1') {
+                throw new Error(`获取天气失败：${data.info || '未知错误'}`);
+            }
+            return {
+                now: data.lives[0], // 实时天气
+                forecast: data.forecasts[0].casts // 7天预报
+            };
+        }
+
+        // 3. 主查询函数
         async function getWeatherData(city) {
             if (!city.trim()) {
                 showError('请输入有效的城市名称');
@@ -204,33 +230,17 @@
             }
 
             try {
-                // 1. 获取实时天气
-                const currentRes = await fetch(`${CURRENT_WEATHER_API}?location=${encodeURIComponent(city)}&key=${API_KEY}`);
-                if (!currentRes.ok) throw new Error('网络请求失败，请检查网络连接');
+                // 步骤1：城市转adcode
+                const { adcode, cityName } = await getCityAdcode(city);
+                // 步骤2：获取天气数据
+                const { now, forecast } = await getWeatherByAdcode(adcode);
                 
-                const currentData = await currentRes.json();
-                // 检查和风天气接口返回状态码
-                if (currentData.code !== "200") {
-                    handleQWeatherError(currentData.code, city);
-                    return;
-                }
-
-                // 2. 获取未来7天预报
-                const forecastRes = await fetch(`${FORECAST_API}?location=${encodeURIComponent(city)}&key=${API_KEY}`);
-                if (!forecastRes.ok) throw new Error('获取未来预报失败，请稍后重试');
+                // 步骤3：渲染今日天气
+                renderTodayWeather(now, cityName);
+                // 步骤4：渲染7天预报
+                render7dForecast(forecast);
                 
-                const forecastData = await forecastRes.json();
-                if (forecastData.code !== "200") {
-                    throw new Error(`获取未来预报失败：${forecastData.msg || '未知错误'}`);
-                }
-
-                // 3. 渲染当前天气
-                renderCurrentWeather(currentData, city);
-
-                // 4. 渲染未来7天预报
-                renderForecast(forecastData.daily);
-
-                // 5. 显示天气容器，隐藏初始提示
+                // 显示天气容器
                 weatherContainer.classList.remove('hidden');
                 initialHint.classList.add('hidden');
 
@@ -241,100 +251,45 @@
             }
         }
 
-        /**
-         * 处理和风天气的错误码
-         * @param {string} code - 错误码
-         * @param {string} city - 查询的城市名
-         */
-        function handleQWeatherError(code, city) {
-            let msg = '';
-            switch(code) {
-                case "401":
-                    msg = 'API密钥无效！请检查密钥是否正确，或确认实名认证已通过';
-                    break;
-                case "404":
-                    msg = `未找到「${city}」的天气数据！请检查城市名（如：需填「杭州市」而非「杭州」，小众区县加地级市）`;
-                    break;
-                case "429":
-                    msg = 'API请求次数超限！免费版每天3000次、每分钟60次，请稍后重试';
-                    break;
-                case "500":
-                    msg = '服务器内部错误，请稍后重试';
-                    break;
-                default:
-                    msg = `查询失败：${code} - ${currentData.msg || '未知错误'}`;
-            }
-            showError(msg);
-        }
-
-        /**
-         * 渲染当前天气（适配和风天气数据格式）
-         * @param {object} data - 实时天气数据
-         * @param {string} city - 城市名
-         */
-        function renderCurrentWeather(data, city) {
-            const now = data.now;
-            
-            todayCity.textContent = `${city} (中国)`;
-            todayDate.textContent = formatTodayDate();
-            // 和风天气图标CDN
-            todayIcon.src = `https://cdn.qweather.com/img/weather/${now.icon}.png`;
-            todayIcon.alt = now.text;
-            todayWeather.textContent = now.text;
-            todayTemp.textContent = `${now.temp}°C`;
-            feelsLike.textContent = `${now.feelsLike}°C`;
+        // 渲染今日天气
+        function renderTodayWeather(now, cityName) {
+            todayCity.textContent = `${cityName} (中国)`;
+            todayDate.textContent = formatDate(now.reporttime);
+            // 匹配天气图标
+            todayIcon.src = weatherIconMap[now.weather] || weatherIconMap['晴'];
+            todayIcon.alt = now.weather;
+            todayWeather.textContent = now.weather;
+            todayTemp.textContent = `${now.temperature}°C`;
+            feelsLike.textContent = `${now.temperature}°C`; // 高德实时天气无体感温度，用当前温度替代
             humidity.textContent = `${now.humidity}%`;
-            windSpeed.textContent = `${now.windSpeed} km/h`;
+            windSpeed.textContent = `${now.windpower}级 (${now.winddirection})`;
             pressure.textContent = `${now.pressure} hPa`;
         }
 
-        /**
-         * 渲染未来7天预报（适配和风天气数据格式）
-         * @param {array} dailyData - 7天预报数据数组
-         */
-        function renderForecast(dailyData) {
+        // 渲染7天预报
+        function render7dForecast(forecast) {
             forecastList.innerHTML = '';
-            // 遍历7天预报数据
-            dailyData.forEach(day => {
-                const forecastCard = document.createElement('div');
-                forecastCard.className = 'bg-gray-50 rounded-lg p-4 text-center transition-all-300 hover:shadow-md hover:translate-y-[-2px]';
-                
-                // 格式化日期：MM-DD 周X
-                const date = new Date(day.fxDate);
-                const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-                const weekDay = weekDays[date.getDay()];
-                const shortDate = `${String(date.getMonth()+1).padStart(2,0)}-${String(date.getDate()).padStart(2,0)}<br>${weekDay}`;
-
-                forecastCard.innerHTML = `
-                    <p class="text-secondary text-sm mb-2">${shortDate}</p>
-                    <img src="https://cdn.qweather.com/img/weather/${day.iconDay}.png" alt="${day.textDay}" class="w-12 h-12 mx-auto mb-2">
-                    <p class="text-sm text-gray-700 mb-1">${day.textDay}</p>
+            // 取前7天预报
+            forecast.slice(0,7).forEach(day => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-50 rounded-lg p-4 text-center transition-all-300 hover:shadow-md hover:translate-y-[-2px]';
+                card.innerHTML = `
+                    <p class="text-secondary text-sm mb-2">${formatShortDate(day.date)}</p>
+                    <img src="${weatherIconMap[day.dayweather] || weatherIconMap['晴']}" alt="${day.dayweather}" class="w-12 h-12 mx-auto mb-2">
+                    <p class="text-sm text-gray-700 mb-1">${day.dayweather}</p>
                     <div class="flex justify-center gap-2 text-sm">
-                        <span class="text-red-500">↑ ${day.tempMax}°C</span>
-                        <span class="text-blue-500">↓ ${day.tempMin}°C</span>
+                        <span class="text-red-500">↑ ${day.highest}°C</span>
+                        <span class="text-blue-500">↓ ${day.lowest}°C</span>
                     </div>
                 `;
-                forecastList.appendChild(forecastCard);
+                forecastList.appendChild(card);
             });
         }
 
         // ===================== 事件监听 =====================
-        // 搜索按钮点击事件
-        searchBtn.addEventListener('click', () => {
-            getWeatherData(cityInput.value);
-        });
-
-        // 回车触发搜索
-        cityInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                getWeatherData(cityInput.value);
-            }
-        });
-
-        // 页面加载时聚焦搜索框
-        window.addEventListener('load', () => {
-            cityInput.focus();
-        });
+        searchBtn.addEventListener('click', () => getWeatherData(cityInput.value));
+        cityInput.addEventListener('keydown', (e) => e.key === 'Enter' && getWeatherData(cityInput.value));
+        window.addEventListener('load', () => cityInput.focus());
     </script>
 </body>
 </html>
